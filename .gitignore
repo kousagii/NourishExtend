@@ -1,0 +1,68 @@
+# Dependencies, generated output, test data and local tools
+node_modules/
+.expo/
+/dist/
+/exports/
+/test-results/
+/coverage/
+/.test-data/
+/.tools/
+/.local/
+
+# Private environment/signing files; retain the safe configuration template
+.env
+.env.*
+!.env.example
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.key
+credentials.json
+demo-signing.properties
+
+# Machine-specific Android configuration and generated native builds
+android/local.properties
+android/.gradle/
+android/.kotlin/
+android/**/build/
+android/**/.cxx/
+android/**/.externalNativeBuild/
+*.apk
+*.aab
+*.apks
+
+# Supabase CLI local state
+supabase/.temp/
+supabase/.branches/
+
+# Keep only the root README from Markdown documentation
+*.md
+!/README.md
+
+# Local notes, research, screenshots, reports and archived HTML prototypes
+/docs/
+/legacy/
+
+# Unused starter component and prototype-only images
+/AssetExample.js
+/finalbg.png
+/Images/finalbg.png
+/Images/snack-icon.png
+/Images/donate.jfif
+/Images/notification.png
+/Images/truck.png
+
+# Local editor/OS files, logs and temporary files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.log
+*.tmp
+*.swp
+*.swo
+*~
+__pycache__/
+*.py[cod]

@@ -1,0 +1,5 @@
+-- No synthetic users are inserted into a hosted database automatically.
+-- Integration tests create TEST ONLY records in an isolated PostgreSQL test engine.
+-- For a classroom demo, register two verified test accounts through Auth and create
+-- listings titled "DEMO ONLY — ..." through the app. Use fictional pickup details.
+-- Never use real addresses or classmates' personal details in demonstration data.

@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "NourishExtend",
+    "slug": "nourish-extend",
+    "version": "1.0.1",
+    "orientation": "portrait",
+    "icon": "./Images/icon.png",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.nourishextend.app",
+      "allowBackup": false,
+      "blockedPermissions": ["android.permission.RECORD_AUDIO", "android.permission.SYSTEM_ALERT_WINDOW", "android.permission.WRITE_EXTERNAL_STORAGE"],
+      "adaptiveIcon": {
+        "foregroundImage": "./Images/adaptive-icon.png",
+        "backgroundColor": "#FAE6D0"
+      }
+    },
+    "web": {
+      "favicon": "./Images/favicon.png"
+    },
+    "plugins": [
+      "expo-font",
+      "expo-secure-store",
+      ["expo-splash-screen", { "image": "./Images/splash-icon.png", "resizeMode": "contain", "backgroundColor": "#FAE6D0", "dark": { "backgroundColor": "#211B17" } }],
+      "expo-status-bar"
+    ]
+  }
+}

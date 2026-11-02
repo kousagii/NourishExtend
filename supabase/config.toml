@@ -1,0 +1,35 @@
+project_id = "nourish-extend"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+
+[db]
+port = 54322
+major_version = 17
+
+[auth]
+enabled = true
+site_url = "http://localhost:8081"
+additional_redirect_urls = ["http://localhost:8081"]
+minimum_password_length = 12
+
+[auth.email]
+enable_signup = true
+enable_confirmations = true
+otp_length = 8
+otp_expiry = 3600
+
+[auth.email.template.confirmation]
+subject = "Your NourishExtend verification code"
+content_path = "./supabase/templates/confirmation.html"
+
+[functions.upload-photo]
+verify_jwt = false
+
+[functions.delete-account]
+verify_jwt = false
+
+[functions.maintenance]
+verify_jwt = false
