@@ -35,7 +35,7 @@ function Root() {
   const [current,setCurrent]=useState('Home');
   const [navigationReady,setNavigationReady]=useState(false);
   const badges=useUpdates();
-  if(loading)return <Page><AppText>Opening NourishExtend…</AppText></Page>;
+  if(loading)return <Page><AppText>Opening Nourish Extend…</AppText></Page>;
   if(privacyOpen)return <PrivacyScreen onBack={()=>setPrivacyOpen(false)}/>;
   if(!session || recovery)return <><StatusBar style={isDark?'light':'dark'}/><AuthScreen onPrivacy={()=>setPrivacyOpen(true)}/></>;
   if(!profile)return <Page><AppText variant="title">Let’s reconnect</AppText><AppText>{retryError||error||'Your profile is unavailable. Apply the database setup and try again.'}</AppText><Button title="Try again" onPress={()=>refreshProfile().catch(()=>setRetryError('Could not load your profile. Check the database setup and connection.'))}/><Button title="Sign out" secondary onPress={()=>supabase.auth.signOut()}/></Page>;
@@ -43,7 +43,7 @@ function Root() {
     <StatusBar style={isDark?'light':'dark'}/>
     <NavigationContainer ref={navigation} onReady={()=>setNavigationReady(true)} theme={navigationTheme} onStateChange={()=>{const name=navigation.current?.getCurrentRoute()?.name;setCurrent(previous=>name==='Pickup'?'Activity':name==='Inquiry'?'Messages':['Home','Donate','Community','Messages','Activity','Settings'].includes(name)?name:previous);}}>
       <Stack.Navigator initialRouteName="Home" screenOptions={{headerLeft:()=>null,headerStyle:{backgroundColor:colors.primary},headerTintColor:colors.onPrimary,headerTitleStyle:{fontFamily:headingFont,fontWeight:'600',fontSize:Math.max(12,18*uiScale)},cardStyle:{backgroundColor:colors.background},headerRight:()=> <View style={{flexDirection:'row',paddingRight:8}}><Pressable disabled={!navigationReady} accessibilityRole="button" accessibilityLabel={`Notifications${badges.notifications?', '+badges.notifications+' unread updates':''}`} onPress={()=>navigation.current?.navigate('Notifications')} style={{minHeight:44,minWidth:44,alignItems:'center',justifyContent:'center'}}><Icon name="bell" color={colors.onPrimary}/>{badges.notifications>0&&<View style={{position:'absolute',top:7,right:7,width:11,height:11,borderRadius:6,borderWidth:2,borderColor:colors.surface,backgroundColor:colors.onPrimary}}/>}</Pressable><Pressable disabled={!navigationReady} accessibilityRole="button" accessibilityLabel="Settings" onPress={()=>navigation.current?.navigate('Settings')} style={{minHeight:44,minWidth:44,alignItems:'center',justifyContent:'center'}}><Icon name="settings" color={colors.onPrimary}/></Pressable></View>}}>
-        <Stack.Screen name="Home" component={HomeScreen} options={{title:'NourishExtend'}}/>
+        <Stack.Screen name="Home" component={HomeScreen} options={{title:'Nourish Extend'}}/>
         <Stack.Screen name="Donate" component={CreateDonationScreen} options={{title:'Share food'}}/>
         <Stack.Screen name="Donation" component={DonationDetailScreen} options={{title:'Donation details'}}/>
         <Stack.Screen name="CancelDonation" component={CancelDonationScreen} options={{title:'Cancel donation'}}/>

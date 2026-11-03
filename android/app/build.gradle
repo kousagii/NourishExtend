@@ -93,8 +93,8 @@ android {
         applicationId 'com.nourishextend.app'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 6
-        versionName "1.2.1"
+        versionCode 8
+        versionName "1.2.3"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }
@@ -136,7 +136,7 @@ android {
             initWith release
             applicationIdSuffix '.demo'
             versionNameSuffix '-demo'
-            resValue 'string', 'app_name', 'NourishExtend Demo'
+            resValue 'string', 'app_name', 'Nourish Extend'
             signingConfig signingConfigs.nourishDemo
             matchingFallbacks = ['release']
             debuggable false

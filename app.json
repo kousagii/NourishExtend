@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "NourishExtend",
+    "name": "Nourish Extend",
     "slug": "nourish-extend",
-    "version": "1.2.1",
+    "version": "1.2.3",
     "orientation": "portrait",
     "icon": "./Images/icon.png",
     "userInterfaceStyle": "automatic",

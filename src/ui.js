@@ -9,13 +9,14 @@ export function AppText({ variant, style, ...props }) {
   const combined=StyleSheet.flatten([fontStyle,styles.text,{color:colors.text},variant==='title'&&styles.title,variant==='heading'&&styles.heading,variant==='muted'&&{color:colors.muted},style]);
   return <Text {...props} style={[combined,{fontSize:textSize(combined.fontSize||16,sizePercent),lineHeight:Math.max(18,(combined.lineHeight||25)*uiScale)}]} />;
 }
-export function Page({ children }) {
+export function Page({ children,footer,scrollRef,onScroll,onContentSizeChange }) {
   const { colors,uiScale=0.8 } = useTheme();
   const insets = useSafeAreaInsets();
   return <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.background }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.page, {padding:20*uiScale, paddingTop: Math.max(insets.top,20*uiScale), paddingBottom: Math.max(insets.bottom, 24*uiScale) }]}>
+    <ScrollView ref={scrollRef} onScroll={onScroll} scrollEventThrottle={100} onContentSizeChange={onContentSizeChange} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.page, {padding:20*uiScale, paddingTop: Math.max(insets.top,20*uiScale), paddingBottom: Math.max(insets.bottom, 24*uiScale) }]}>
       <View style={[styles.content,{gap:18*uiScale}]}>{children}</View>
     </ScrollView>
+    {!!footer&&<View style={{borderTopWidth:1,borderColor:colors.border,backgroundColor:colors.surface,padding:12*uiScale}}><View style={{width:'100%',maxWidth:720,alignSelf:'center'}}>{footer}</View></View>}
   </KeyboardAvoidingView>;
 }
 export function Card({ children,style }) {

@@ -19,4 +19,4 @@ export function BasketArt({size=100}){const {uiScale=0.8}=useTheme();return <Svg
   <Rect x="20" y="60" width="81" height="10" rx="5" fill="#FFF9F2" stroke="#61452D" strokeWidth="3"/>
   <Path d="M44 76v12m16-12v12m16-12v12" stroke="#B8763A" strokeWidth="3" strokeLinecap="round"/>
  </Svg>;}
-export function Brand({compact=false}){const {colors}=useTheme();return <View style={{flexDirection:'row',alignItems:'center',gap:12,flexWrap:'wrap'}}><BasketArt size={compact?40:66}/><View style={{flexShrink:1}}><AppText style={{fontSize:compact?18:28,lineHeight:compact?26:35,fontWeight:'600',color:colors.primary}}>{'Nourish\u200bExtend'}</AppText>{!compact&&<AppText variant="muted">Share food, spread hope.</AppText>}</View></View>;}
+export function Brand({compact=false}){const {colors}=useTheme();return <View style={{flexDirection:'row',alignItems:'center',gap:12,flexWrap:'wrap'}}><BasketArt size={compact?40:66}/><View style={{flexShrink:1}}><AppText style={{fontSize:compact?18:28,lineHeight:compact?26:35,fontWeight:'600',color:colors.primary}}>{'Nourish Extend'}</AppText>{!compact&&<AppText variant="muted">Share food, spread hope.</AppText>}</View></View>;}

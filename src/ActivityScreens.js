@@ -1,3 +1,4 @@
+import {PICKUP_SELECT} from './queries.cjs';
 import React, { useEffect, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { Page, Card, AppText, Field, Button } from './ui';
@@ -7,7 +8,11 @@ import { supabase, rpc, query } from './backend';
 import { useRemote, dateLabel } from './data';
 import { RemoteState } from './DonationScreens';
 import {View} from 'react-native';
+import {Icon} from './brand';
 import {Select} from './controls';
+import ConversationMember from './ConversationMember';
+import {pickupMember} from './conversations.cjs';
+import {MessageBubbles,MessageComposer,useChatScroll} from './Chat';
 
 export function ActivityScreen({navigation}) {
   const { session } = useSession();
@@ -49,37 +54,38 @@ export function ActivityScreen({navigation}) {
 export function PickupScreen({route,navigation}) {
   const {session}=useSession(), {colors}=useTheme();
   const state=useRemote(async()=>{
-    const claim=await query(supabase.from('reservations').select('*,donations(*)').eq('id',route.params.id).maybeSingle());
+    const claim=await query(supabase.from('reservations').select(PICKUP_SELECT).eq('id',route.params.id).maybeSingle());
     if(!claim)return null;
     const [messages,details]=await Promise.all([
       query(supabase.from('messages').select('*').eq('reservation_id',claim.id).order('created_at',{ascending:false}).order('id',{ascending:false}).limit(100)),
       query(supabase.from('pickup_details').select('instructions').eq('donation_id',claim.donation_id).maybeSingle()),
     ]);
     if(messages[0])await rpc('read_pickup',{p_reservation:claim.id,p_through:messages[0].created_at});
-    return {claim,messages:messages.reverse(),details};
+    return {claim,member:pickupMember(claim,session.user.id),messages:messages.reverse(),details};
   },[route.params.id]);
   useFocusEffect(React.useCallback(()=>{
     state.refresh();
     const timer=setInterval(state.refresh,15000);
     return ()=>clearInterval(timer);
   },[state.refresh]));
-  const [message,setMessage]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[confirm,setConfirm]=useState('');
+  const [message,setMessage]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[confirm,setConfirm]=useState(''),[showDetails,setShowDetails]=useState(!!route.params.showDetails);const chat=useChatScroll({startAtBottom:!route.params.showDetails});
   async function act(name,params) {
     setBusy(true);setError('');
     try {await rpc(name,params);setMessage('');setConfirm('');await state.refresh();}
     catch(err){setError(err.message||'This action failed.');}
     finally{setBusy(false);}
   }
+  useEffect(()=>{if(route.params.showDetails){setShowDetails(true);chat.scrollRef.current?.scrollTo({y:0,animated:false});}},[route.params.showDetails,route.params.id]);
   const claim=state.data?.claim, donation=claim?.donations;
   const donor=donation?.donor_id===session.user.id;
   const confirmed=donor?claim?.donor_confirmed:claim?.recipient_confirmed;
-  return <Page>
-    <AppText variant="title">Arrange a good handover</AppText>
+  return <Page scrollRef={chat.scrollRef} onScroll={chat.onScroll} onContentSizeChange={()=>chat.contentChanged(state.data?.messages)} footer={claim?.status==='reserved'?<MessageComposer value={message} onChange={setMessage} onSend={()=>act('send_message',{p_reservation:claim.id,p_body:message})} busy={busy} error={error}/>:null}>
+    <AppText variant="title">{donation?.title||'Pickup conversation'}</AppText>
     <RemoteState loading={state.loading && !state.data} error={state.error} retry={state.refresh}/>
     {!state.loading && !state.error && !claim && <AppText>This pickup is unavailable.</AppText>}
     {!!claim && <>
       <Card>
-        <AppText variant="heading">{donation?.title}</AppText><AppText>{donation?.quantity} · {donation?.area}</AppText>
+        <ConversationMember member={state.data.member} navigation={navigation}/><Button title={showDetails?'Hide pickup details':'Pickup details and confirmation'} secondary icon={<Icon name="chevron"/>} accessibilityState={{expanded:showDetails}} onPress={()=>setShowDetails(!showDetails)}/>{showDetails&&<><AppText>{donation?.quantity} · {donation?.area}</AppText>
         <AppText variant="muted">Collect by {dateLabel(donation?.pickup_deadline)} · {claim.status}</AppText>
         {state.data.details && <><AppText variant="heading">Private pickup instructions</AppText><AppText>{state.data.details.instructions}</AppText></>}
         {claim.status==='reserved' && <>
@@ -93,17 +99,14 @@ export function PickupScreen({route,navigation}) {
           <Button title="Go back" secondary disabled={busy} onPress={()=>setConfirm('')}/>
         </Card>}
         <Button title="Report or block this member" secondary onPress={()=>navigation.navigate('Report',{type:'user',id:donor?claim.recipient_id:donation.donor_id,userId:donor?claim.recipient_id:donation.donor_id})}/>
+      </>}
       </Card>
       <AppText variant="heading">Pickup messages</AppText>
       {!state.data.messages.length && <AppText variant="muted">No messages yet. Use this private conversation to coordinate pickup.</AppText>}
-      {state.data.messages.map(item=><Card key={item.id}><AppText variant="muted">{item.sender_id===session.user.id?'You':'Other person'} · {dateLabel(item.created_at)}</AppText><AppText>{item.body}</AppText></Card>)}
+      <MessageBubbles messages={state.data.messages} userId={session.user.id} member={state.data.member}/>
       {state.data.messages.length===100 && <AppText variant="muted">Showing the latest 100 messages.</AppText>}
-      {claim.status==='reserved' && <Card>
-        <Field label="Message" value={message} onChangeText={setMessage} multiline maxLength={1500}/>
-        <Button title="Send message" busy={busy} disabled={!message.trim()} onPress={()=>act('send_message',{p_reservation:claim.id,p_body:message})}/>
-      </Card>}
     </>}
-    {!!error && <AppText accessibilityRole="alert" style={{color:colors.danger}}>{error}</AppText>}
+    {!!error&&claim?.status!=='reserved' && <AppText accessibilityRole="alert" style={{color:colors.danger}}>{error}</AppText>}
   </Page>;
 }
 

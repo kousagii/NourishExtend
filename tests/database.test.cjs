@@ -42,6 +42,7 @@ before(async()=>{
   await db.exec(await fs.readFile(path.join(__dirname,'../supabase/migrations/202611030004_profile_photos.sql'),'utf8'));
   await db.exec(await fs.readFile(path.join(__dirname,'../supabase/migrations/202611040001_notification_history.sql'),'utf8'));
   await db.exec(await fs.readFile(path.join(__dirname,'../supabase/migrations/202611040002_community_likes.sql'),'utf8'));
+  await db.exec(await fs.readFile(path.join(__dirname,'../supabase/migrations/202611040003_community_update_areas.sql'),'utf8'));
   for(const id of [donor,recipient,stranger,unverified])await db.query("insert into auth.users values($1,$2,$3,'{\"display_name\":\"TEST MEMBER\"}')",[id,id+'@example.invalid',id===unverified?null:new Date().toISOString()]);
   await db.query("insert into storage.objects(bucket_id,name) values('food-photos',$1)",[donor+'/test.png']);
 });
@@ -160,8 +161,8 @@ test('structured location validation preserves legacy fields and supports multip
   await db.exec('delete from public.action_events');
   const places=(await db.query('select code from public.locations order by code limit 2')).rows.map(r=>r.code);
   await assert.rejects(asUser(donor,"select public.publish_located_donation('{\"location_code\":\"invalid\"}')"),/Choose a city/);
-  await assert.rejects(asUser(donor,"select public.publish_located_post('update','TEST ONLY','TEST ONLY body',array['invalid'])"),/Choose 1/);
-  const post=(await asUser(donor,"select public.publish_located_post('update','TEST ONLY','TEST ONLY body',$1::text[]) id",[places])).rows[0].id;
+  await assert.rejects(asUser(donor,"select public.publish_located_post('request','TEST ONLY','TEST ONLY body',array['invalid'])"),/Choose 1/);
+  const post=(await asUser(donor,"select public.publish_located_post('request','TEST ONLY','TEST ONLY body',$1::text[]) id",[places])).rows[0].id;
   assert.equal((await asUser(recipient,'select id from public.community_posts where id=$1 and location_codes && $2::text[]',[post,[places[1]]])).rows.length,1);
   const located=await publish({location_code:places[0],neighbourhood:'TEST NEIGHBOURHOOD'});
   assert.equal((await asUser(recipient,'select id from public.donations where id=$1 and location_code=any($2::text[])',[located,places])).rows.length,1);
@@ -309,4 +310,23 @@ test('post activity rejects anonymous and oversized reads; likes obey mutation l
   await assert.rejects(asUser(recipient,'select public.set_post_like($1,false)',[post]),/Too many requests/);
   await db.query('delete from public.community_posts where id=$1',[post]);
   assert.equal((await db.query('select * from public.community_likes where post_id=$1',[post])).rows.length,0);
+});
+
+
+test('community updates need no area; requests keep validated areas and filtered feeds include updates',async()=>{
+ await db.exec('delete from public.action_events');
+ const create=(kind,areas)=>asUser(donor,"select public.publish_located_post($1,'TEST AREA POLICY','SYNTHETIC BODY',$2::text[]) id",[kind,areas]);
+ await assert.rejects(asUser(unverified,"select public.publish_located_post('update','TEST','TEST BODY','{}')"),/verified email/);
+ await assert.rejects(create('request',[]),/Choose 1/);
+ const update=(await create('update',[])).rows[0].id;
+ const stale=(await create('update',['invalid'])).rows[0].id;
+ for(const id of [update,stale]){
+  const row=(await asUser(recipient,'select area,location_codes from public.community_posts where id=$1',[id])).rows[0];
+  assert.equal(row.area,'Community-wide');assert.deepEqual(row.location_codes,[]);
+ }
+ await assert.rejects(asUser(donor,"select public.publish_located_post('update','x','TEST BODY','{}')"),/check constraint/);
+ const place=(await db.query('select code from public.locations order by code limit 1')).rows[0].code;
+ const request=(await create('request',[place])).rows[0].id;
+ const visible=(await asUser(recipient,"select id from public.community_posts where kind='update' or location_codes && $1::text[]",[[place]])).rows.map(r=>r.id);
+ assert.ok(visible.includes(update)&&visible.includes(request));
 });
