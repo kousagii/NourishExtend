@@ -10,7 +10,7 @@ import { DefaultTheme, DarkTheme } from '@react-navigation/native';
 const ThemeContext = createContext(null);
 export const THEME_KEY = 'nourish.appearance.v1';
 export const palettes = {
-  light: { background: '#FAE6D0', surface: '#FFF9F2', text: '#30251F', muted: '#705D50', border: '#98785E', primary: '#95451F', onPrimary: '#FFFFFF', accent: '#375A3D', danger: '#A02626', input: '#FFFFFF' },
+  light: { background: '#FAE6D0', surface: '#FFF9F2', text: '#30251F', muted: '#705D50', border: '#9C785B', primary: '#95451F', onPrimary: '#FFFFFF', accent: '#375A3D', danger: '#A02626', input: '#FFFFFF' },
   dark: { background: '#211B17', surface: '#302720', text: '#FFF3E6', muted: '#CDB9A5', border: '#8A7562', primary: '#F2B68E', onPrimary: '#302016', accent: '#ADD2A6', danger: '#FFAAAA', input: '#251F1A' },
 };
 SplashScreen.preventAutoHideAsync().catch(() => {});

@@ -16,13 +16,13 @@ export function Page({ children }) {
     </ScrollView>
   </KeyboardAvoidingView>;
 }
-export function Card({ children }) {
+export function Card({ children,style }) {
   const { colors } = useTheme();
-  return <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>{children}</View>;
+  return <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border },style]}>{children}</View>;
 }
 export function Button({ title, onPress, secondary, disabled, busy, accessibilityState, ...props }) {
   const { colors } = useTheme();
-  return <Pressable {...props} accessibilityRole="button" accessibilityState={{ ...accessibilityState, disabled: disabled || busy, busy }} disabled={disabled || busy} onPress={onPress} style={({ pressed }) => [styles.button, { backgroundColor: secondary ? colors.surface : colors.primary, borderColor: colors.primary, opacity: disabled || busy ? 0.55 : pressed ? 0.8 : 1 }]}>
+  return <Pressable {...props} accessibilityRole="button" aria-selected={accessibilityState?.selected} aria-expanded={accessibilityState?.expanded} aria-busy={busy} accessibilityState={{ ...accessibilityState, disabled: disabled || busy, busy }} disabled={disabled || busy} onPress={onPress} style={({ pressed }) => [styles.button, { backgroundColor: secondary ? colors.surface : colors.primary, borderColor: colors.primary, opacity: disabled || busy ? 0.55 : pressed ? 0.8 : 1 }]}>
     {busy && <ActivityIndicator color={secondary ? colors.primary : colors.onPrimary} />}
     <AppText style={{ color: secondary ? colors.primary : colors.onPrimary, textAlign: 'center', fontWeight: '600', flexShrink: 1 }}>{title}</AppText>
   </Pressable>;
@@ -38,7 +38,7 @@ export function Field({ label, error, style, ...props }) {
 const styles = StyleSheet.create({
   page: { padding: 20, flexGrow: 1 }, content: { width: '100%', maxWidth: 720, alignSelf: 'center', gap: 18 },
   text: { fontSize: 16, lineHeight: 25, flexShrink: 1 }, title: { fontSize: 28, lineHeight: 36, fontWeight: '600' }, heading: { fontSize: 20, lineHeight: 28, fontWeight: '600' },
-  card: { borderWidth: 1, borderRadius: 16, padding: 18, gap: 14 },
+  card: { borderWidth: 1, borderRadius: 22, padding: 18, gap: 14 },
   button: { minHeight: 48, paddingHorizontal: 18, paddingVertical: 12, borderWidth: 1, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
   input: { minHeight: 50, borderWidth: 1, borderRadius: 10, padding: 12, fontSize: 16, lineHeight: 24, width: '100%' },
 });

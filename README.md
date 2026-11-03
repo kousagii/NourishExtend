@@ -8,7 +8,10 @@ Built with **Expo SDK 58, React Native, React Native Web, and Supabase**, it tar
 
 - Food listings with photos, quantity, allergens, storage guidance, approximate pickup area, and a collection deadline.
 - Search and area/category filters, listing details, and atomic reservations to prevent competing claims.
+- Searchable PSA cities and municipalities: multiple areas for discovery/community posts, one pickup location per donation. Calendar and time controls use Philippines time.
+- A separate Messages tab for private inquiries before reservation, unread indicators, and linked in-app notifications. Inquiries do not hold food or reveal pickup instructions.
 - Private pickup instructions/messages, cancellation, collection confirmation by both participants, and donation history.
+- Separate Current, Completed, Cancelled, and Expired activity sections. Settings and notifications are accessible from header icons; headers have no Back button.
 - Community requests/updates, reporting, blocking, profile editing, and in-app notifications.
 - Email/password signup with an in-app email verification code, password recovery, logout, and account deletion.
 - Persistent Light, Dark, and System appearance settings with a beige light palette.
@@ -71,7 +74,22 @@ Use the [Supabase dashboard](https://supabase.com/dashboard). Enable **Data API*
 
 ### 2. Apply the database migration once
 
-For a **new, empty project**, run the complete `supabase/migrations/202610310001_core.sql` in Supabase SQL Editor. It creates tables, database functions, RLS policies, the private photo bucket, and the Auth profile trigger. Apply it before registering users.
+For a **new, empty project**, run all SQL files in `supabase/migrations` in filename order. The core migration creates tables, database functions, RLS policies, the private photo bucket, and the Auth profile trigger. Apply it before registering users.
+
+The configured school project had these two migrations applied and checked on **3 November 2026**. **Do not reapply them there.** For another project that already has only the core migration, apply these additions in order before using version 1.1.0:
+
+1. `202611030001_locations_inquiries.sql`: adds structured areas and private inquiry threads/messages with participant-only access, notification links, and retention rules.
+2. `202611030002_psgc_catalogue.sql`: imports the official 30 September 2026 PSA location catalogue (149 cities, 1,493 municipalities).
+
+Neither file rewrites existing area text. Older records remain visible with area filters cleared; they do not match a structured area filter until their location is explicitly assigned. Do not infer codes from ambiguous free text.
+
+The bundled `src/locations.json` and catalogue migration are generated from the same official workbook. Attribution and its SHA256 are in `licenses/PSGC.txt`. To reproduce them, run `python scripts/import-psgc.py PATH_TO_OFFICIAL_WORKBOOK`; the importer reads values only and does not evaluate spreadsheet formulas or external links. It deliberately validates the September 2026 counts. Review administrative changes before adapting it for a later release. [Official PSA source](https://psa.gov.ph/classification/psgc).
+
+Community coverage helps filter posts; it does not restrict who can read them. All signed-in members can read eligible posts. No GPS, radius search, or neighbourhood boundary enforcement is implemented.
+
+Inquiry messages are private to their two participants, limited to 1,500 characters, blocked by member blocking, and use the existing server mutation rate limits. Threads are deduplicated per inquirer/listing. New messages stop when the listing is reserved, cancelled, or expired; successful recipients coordinate collection in Activity. In-app updates poll every 15 seconds while the app is open. These are not Android push/email notifications. Notifications respect the existing in-app notification preference.
+
+Inquiry threads are removed after 30 days of inactivity or 30 days after their listing closes/expires, whichever comes first, once maintenance is active. The existing account/donation deletion cascades also remove associated inquiry records. **This migration does not enable the maintenance schedule.**
 
 Alternatively, use the pinned CLI for a fresh project's tracked migration history:
 
@@ -106,9 +124,11 @@ Enter credentials directly in the provider/Supabase dashboards, never in chat, a
 
 After SMTP is saved, open Supabase Emails → Confirm sign up. Set the subject to `Your NourishExtend verification code`, and paste the complete source from `supabase/templates/confirmation.html` into the email body. Keep `{{ .Token }}` intact; Supabase replaces it with the real code. Save. In the Email provider settings, keep **OTP length 8** and **expiration 3600 seconds**, matching the app and local config. `config.toml` and the HTML file configure local development; they do not automatically update a hosted project's template.
 
-After signup, enter the emailed 8-digit code inside the app. Existing unconfirmed accounts can choose **Verify my email → Send new code**. Only Supabase verifies a code; invalid/expired codes cannot unlock an account. Resending has a 60-second UI cooldown plus server mail limits. Do not share real verification codes with anyone.
+After signup, enter the emailed 8-digit code inside the app. The login page has no separate verification button. If Supabase rejects sign-in because the email is unconfirmed, the app opens code verification automatically, where **Send new code** remains available. Already-confirmed users sign in normally. Only Supabase verifies a code; invalid/expired codes cannot unlock an account. Resending has a 60-second UI cooldown plus server mail limits. Do not share real verification codes with anyone.
 
 On 3 November 2026, custom Brevo SMTP was observed enabled in the hosted pilot and the code-based Confirm sign up template was saved and checked after reloading. SMTP credentials were entered by the user directly in Supabase. Real code delivery and successful account verification/sign-in remain unverified. Request a fresh code from the updated app; older emails still contain the previous links. Password-reset emails still open the configured website, so their redirect must be a reachable web URL; `localhost` on a phone refers to the phone, not your development computer.
+
+The subsequent sign-up failure was traced to **Brevo SMTP 535: 5.7.8 Authentication failed**, returned as HTTP 500 by Supabase. The project owner must correct the SMTP Login/key directly in Supabase; use Brevo's SMTP Login and an SMTP key, not a Brevo account password or API key. SMTP being enabled does not establish successful authentication or delivery. An existing account's confirmed-email status and successful password sign-in were separately observed; that does not verify the new code-email flow.
 
 Display names may repeat; account identity uses a unique user ID and email. The current app requires passwords of at least 12 characters without forcing uppercase/digit/symbol combinations. The field label stays simply `Password`. Use a long unique passphrase or a password manager. Hosted leaked-password protection is currently off.
 
@@ -150,7 +170,7 @@ Edit `.env` directly with the local URL/public key; the interactive helper accep
 
 ## How to use the app
 
-1. Sign up and enter the code from your confirmation email in the app. For an existing unconfirmed account, choose **Verify my email** on the sign-in screen and request a new code. A verified code opens your account.
+1. Sign up and enter the code from your confirmation email in the app. A sign-in rejected specifically for an unconfirmed email opens the verification screen automatically. Already-confirmed accounts can sign in normally. A verified code opens your account.
 2. Edit your profile in Settings. Organisation profiles remain visibly unverified.
 3. Use **Share** to publish food with all required details and private pickup instructions. Pickup times are entered in Philippines time.
 4. Use **Home** to browse/filter food, open details, and reserve an available listing. Users cannot reserve their own donations.
@@ -207,19 +227,20 @@ Keep the maintained `android` source and Gradle wrapper in Git. A clean Expo pre
 | `npm.cmd run test:server` | Run the actual Deno image-processor tests. |
 | `npm.cmd run package` | Create source/web ZIPs; requires Python 3 and an existing web export. |
 
-The ZIP packager uses its own exclusions rather than `.gitignore`; local notes/prototypes can remain in its source archive. Private environment/signing files, tool caches, and dependencies are excluded. Repository uploads follow the Git rules below.
+The ZIP packager uses its own explicit exclusions, including research notes, screenshots, archived prototypes, unused starter assets, Markdown files other than the root README, and isolated visual-review fixtures. Required source, configuration, migrations, tests, lockfiles and licences are included. Private environment/signing files, tool caches, and dependencies are excluded. Repository uploads follow the Git rules below.
 
 ## Security, privacy, and current verification
 
-The implementation uses server validation/authorisation, database RLS and restricted mutations, atomic reservations, private photos, upload size/type restrictions and image re-encoding, protected native session storage, account deletion, and mutation limits. Exact pickup details/messages are restricted to exchange participants. These controls are not a legal-compliance certification or complete security audit.
+The implementation uses server validation/authorisation, database RLS and restricted mutations, atomic reservations, private photos, upload size/type restrictions and image re-encoding, protected native session storage, account deletion, and mutation limits. Exact pickup details and pickup messages are restricted to exchange participants; inquiry messages are restricted to their two conversation participants. These controls are not a legal-compliance certification or complete security audit.
 
 Verification recorded through **3 November 2026**:
 
-- 22 Node tests passed after the email-code revision. Earlier checks also passed: 3 Deno image tests, Edge Function type checks, both platform bundles, and 19 applicable Expo Doctor checks.
-- The hosted core migration/functions were deployed, with Auth health and unauthenticated/private access rejection checked.
-- Inspected small browser layouts and light/dark persistence passed. Native keyboard/accessibility and all signed-in layouts remain unverified.
-- The updated standalone APK is version `1.0.1-demo`, Android version code `2`, built using the existing private signing key. Signature, ZIP integrity, four architectures, bundled app, and 16 KB ZIP alignment passed. Login/signup/code-entry screens were checked at 390px on the web with no horizontal overflow or browser errors. Device installation/runtime behaviour and live code delivery remain untested.
-- The last application dependency audit had 12 moderate findings and no high/critical findings. Use `npm.cmd audit` for a current assessment; do not force incompatible framework downgrades.
+- All **26 Node tests** passed, including location validation, successful location-based publishing/filtering, inquiry privacy, deduplication, blocking, notification opt-out, retention, the existing reservation flow, and database restart persistence. These tests use actual migrations in isolated PostgreSQL/PGlite with synthetic Auth/Storage schemas.
+- The hosted additive migrations were applied. Hosted SQL confirmed 149 cities, 1,493 municipalities, row-level security on all three new tables, denied anonymous reads, and denied direct client writes to inquiry messages. Anonymous REST requests to the new tables returned HTTP 401 / PostgreSQL 42501. Auth health returned 200; all three unauthenticated Edge Function checks returned 401.
+- Signed-in interface layouts were inspected in an isolated, clearly labelled design fixture with synthetic data and no live account requests. Checked 390px layouts, city/municipality selection, distinct Completed/Cancelled sections, inbox/conversation navigation, notification links, and date/time summaries. A second fixture doubled app text sizes to check wrapping and scrolling; this is a layout simulation, not an Android accessibility certification. Native keyboard, screen reader and device font-size behaviour still need physical-device testing.
+- The standalone APK is version `1.1.0-demo`, Android version code `4`, built using the existing private signing key. Web and Android builds passed; APK signature, archive integrity, bundled JavaScript, four architectures, 16 KB ZIP alignment, and 16 KB ELF load alignment for 64-bit libraries were checked. No physical-device installation or two-account inquiry exchange has been performed by the agent.
+- Earlier checks passed: 3 Deno image tests, Edge Function type checks, and 19 applicable Expo Doctor checks. The current production dependency audit reports 12 moderate findings and no high/critical findings; this does not mean the app is vulnerability-free. Do not force incompatible framework changes.
+- Email confirmation still needs a live delivery test after the owner fixes the previously rejected SMTP credentials. The standalone login verification button remains removed; unconfirmed email/password sign-in routes to code entry. No email, code or password was sent by the agent during this redesign.
 
 Live email verification/reset, a complete two-account exchange, truly simultaneous hosted reservations, signed-in uploads/deletion, physical-device tests, public web deployment, and scheduled retention still need end-to-end verification. SQL tests use isolated PostgreSQL/PGlite with synthetic Auth/Storage schemas, not the full hosted services or multiple simultaneous connections. Restricted Windows sandboxes can prevent PGlite checkpoint renames; use a normal authorised terminal for those tests.
 

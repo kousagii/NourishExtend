@@ -6,6 +6,8 @@ import { useTheme } from './theme';
 import { supabase, rpc, query } from './backend';
 import { useRemote, dateLabel } from './data';
 import { RemoteState } from './DonationScreens';
+import {View} from 'react-native';
+import {Select} from './controls';
 
 export function ActivityScreen({navigation}) {
   const { session } = useSession();
@@ -18,25 +20,26 @@ export function ActivityScreen({navigation}) {
   },[session.user.id]);
   useFocusEffect(React.useCallback(() => {state.refresh();},[state.refresh]));
   const [section,setSection]=useState('active');
-  const active = item => item.status==='reserved'||item.status==='available';
+  const matches = item => section==='completed'?item.status==='collected':section==='cancelled'?item.status==='cancelled':section==='expired'?item.status==='available'&&new Date(item.pickup_deadline)<=new Date():item.status==='reserved'||item.status==='available'&&new Date(item.pickup_deadline)>new Date();
+  const claimMatches=r=>section==='active'?r.status==='reserved':section==='completed'?r.status==='collected':section==='cancelled'?r.status==='cancelled':false;
   return <Page>
     <AppText variant="title">Every share has a story</AppText>
-    <Button title={section==='active'?'Show completed / cancelled':'Show current activity'} secondary onPress={()=>setSection(section==='active'?'history':'active')}/>
+    <Select label="Activity status" value={section} onChange={setSection} options={[{value:'active',label:'Current'},{value:'completed',label:'Completed'},{value:'cancelled',label:'Cancelled'},{value:'expired',label:'Expired listings'}]}/>
     <RemoteState {...state} retry={state.refresh}/>
     {!state.loading && !state.error && <>
       <AppText variant="heading">Pickups</AppText>
-      {!state.data?.claims.filter(r=>section==='active'?r.status==='reserved':r.status!=='reserved').length && <Card><AppText variant="muted">No {section==='active'?'current':'past'} pickups yet.</AppText></Card>}
-      {state.data?.claims.filter(r=>section==='active'?r.status==='reserved':r.status!=='reserved').map(claim=><Card key={claim.id}>
+      {!state.data?.claims.filter(claimMatches).length && <Card><AppText variant="muted">No pickups in this section.</AppText></Card>}
+      {state.data?.claims.filter(claimMatches).map(claim=><Card key={claim.id}>
         <AppText variant="heading">{claim.donations?.title || 'Donation'}</AppText>
-        <AppText>{claim.status==='reserved'?'Awaiting collection':claim.status==='collected'?'Collected':'Cancelled'}</AppText>
+        <AppText>{claim.status==='reserved'?'Awaiting collection':claim.status==='collected'?'✓ Completed':'Cancelled'}</AppText>
         <AppText variant="muted">{claim.donations?.area} · {dateLabel(claim.created_at)}</AppText>
         <Button title="View pickup" secondary onPress={()=>navigation.navigate('Pickup',{id:claim.id})}/>
       </Card>)}
       <AppText variant="heading">Your donations</AppText>
-      {!state.data?.donations.filter(d=>section==='active'?active(d):!active(d)).length && <Card><AppText variant="muted">No donations in this section.</AppText></Card>}
-      {state.data?.donations.filter(d=>section==='active'?active(d):!active(d)).map(item=><Card key={item.id}>
+      {!state.data?.donations.filter(matches).length && <Card><AppText variant="muted">No donations in this section.</AppText></Card>}
+      {state.data?.donations.filter(matches).map(item=><Card key={item.id}>
         <AppText variant="heading">{item.title}</AppText>
-        <AppText>{item.status==='available' && new Date(item.pickup_deadline)<new Date()?'Expired':item.status} · {item.quantity}</AppText>
+        <AppText>{item.status==='collected'?'✓ Completed':item.status==='cancelled'?'Cancelled':item.status==='available' && new Date(item.pickup_deadline)<=new Date()?'Expired':item.status==='reserved'?'Reserved':'Available'} · {item.quantity}</AppText>
         <Button title="View donation" secondary onPress={()=>navigation.navigate('Donation',{id:item.id})}/>
       </Card>)}
       <AppText variant="muted">Showing your latest 50 donations and pickups.</AppText>

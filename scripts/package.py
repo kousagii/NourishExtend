@@ -5,11 +5,15 @@ from zipfile import ZipFile, ZIP_DEFLATED
 root = Path(__file__).resolve().parent.parent
 output = root / 'exports'
 output.mkdir(exist_ok=True)
-excluded = {'node_modules', '.expo', '.git', 'dist', 'exports', 'test-results', '.test-data', '.tools', '.local', '.gradle', '.cxx', 'build', '.temp', '.branches'}
+excluded = {'node_modules', '.expo', '.git', 'dist', 'exports', 'test-results', '.test-data', '.tools', '.local', '.review', 'docs', 'legacy', '.gradle', '.kotlin', '.externalNativeBuild', '.cxx', 'build', '.temp', '.branches'}
 
 def source_files(directory):
     for item in directory.iterdir():
         if item.is_symlink() or item.name in excluded:
+            continue
+        if item.suffix == '.md' and item != root / 'README.md':
+            continue
+        if item.name in {'AssetExample.js','finalbg.png','snack-icon.png','donate.jfif','notification.png','truck.png'}:
             continue
         if item.name.startswith('.env') and item.name != '.env.example':
             continue

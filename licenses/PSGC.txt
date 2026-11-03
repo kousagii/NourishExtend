@@ -1,0 +1,6 @@
+Source: Philippine Statistics Authority (PSA), Philippine Standard Geographic Code, 30 September 2026.
+https://psa.gov.ph/classification/psgc
+Workbook metadata: use requires acknowledgement of PSA; distributed without warranty.
+Website: CC BY 4.0 unless otherwise stated. https://creativecommons.org/licenses/by/4.0/
+Adaptation: city/municipality names, codes, province and region extracted; other fields omitted.
+Workbook SHA256: 8aad47f84e4f6317dc4222b9fe35d36b5d71f2b74ad8f0c7622289c131dc9a59

@@ -8,6 +8,7 @@ node_modules/
 /.test-data/
 /.tools/
 /.local/
+/.review/
 
 # Private environment/signing files; retain the safe configuration template
 .env

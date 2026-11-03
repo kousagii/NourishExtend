@@ -4,6 +4,7 @@ import { configured, supabase, redirectUrl } from './backend';
 import { useSession } from './session';
 import { useTheme } from './theme';
 import { EMAIL_CODE_LENGTH, verifyEmailCode, requestEmailCode } from './email-verification.cjs';
+import {Brand} from './brand';
 
 export default function AuthScreen({ onPrivacy }) {
   const { colors } = useTheme();
@@ -68,14 +69,18 @@ export default function AuthScreen({ onPrivacy }) {
       else if (action === 'recover') setNotice('If an account exists, a password-reset email will be sent.');
     } catch (err) {
       setCode('');
+      if (action === 'signin' && err.code === 'email_not_confirmed') {
+        setPassword(''); setMode('verify');
+        setError('Confirm your email before signing in. Request a code below if you need one.');
+        return;
+      }
       setError(action === 'verify' && ['otp_expired', 'otp_disabled', 'invalid_credentials'].includes(err.code)
         ? 'The code is invalid or has expired. Use the latest email or request a new code.'
-        : action === 'signin' ? 'Sign-in failed. Check your email/password. If you have not confirmed your email, use Verify my email below.' : err.message || 'The request failed. Please try again.');
+        : action === 'signin' ? 'Sign-in failed. Check your email/password and try again.' : err.message || 'The request failed. Please try again.');
     } finally { setBusy(false); }
   }
   return <Page>
-    <AppText variant="muted">NOURISH EXTEND</AppText>
-    <AppText variant="title">Share food. Spread hope.</AppText>
+    <Brand/>
     <AppText variant="muted">A little extra can mean a lot to someone nearby.</AppText>
     {!configured && <Card><AppText variant="heading">Connect your project</AppText><AppText>Add your Supabase URL and publishable key to .env, apply the database migration, and restart the app. No live data is shown until connected.</AppText></Card>}
     <Card>
@@ -93,7 +98,6 @@ export default function AuthScreen({ onPrivacy }) {
         {verifying && <Button title={remaining ? 'Send new code in ' + remaining + 's' : 'Send new code'} secondary disabled={busy || remaining > 0 || !configured} onPress={() => submit('resend')} />}
         <Button title={mode === 'signin' ? 'Create an account' : 'Back to sign in'} secondary disabled={busy} onPress={() => changeMode(mode === 'signin' ? 'signup' : 'signin')} />
         {mode === 'signin' && <>
-          <Button title="Verify my email" secondary disabled={busy || !configured} onPress={() => changeMode('verify')} />
           <Button title="Send password-reset email" secondary disabled={busy || !email.trim() || !configured} onPress={() => submit('recover')} />
         </>}
       </>}

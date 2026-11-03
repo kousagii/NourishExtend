@@ -17,9 +17,9 @@ async function asUser(user,sql,params=[]) {
     return tx.query(sql,params);
   });
 }
-async function publish() {
-  const payload={title:'TEST ONLY — Rice',description:'Synthetic integration-test record',quantity:'2 sealed packs',category:'Pantry',allergens:'Unknown',storage_info:'Sealed, dry storage',area:'TEST AREA',photo_path:donor+'/test.png',pickup_deadline:new Date(Date.now()+86400000).toISOString(),instructions:'TEST PRIVATE PICKUP'};
-  const result=await asUser(donor,'select public.publish_donation($1::jsonb) id',[JSON.stringify(payload)]);
+async function publish(extra={}) {
+  const payload={title:'TEST ONLY — Rice',description:'Synthetic integration-test record',quantity:'2 sealed packs',category:'Pantry',allergens:'Unknown',storage_info:'Sealed, dry storage',area:'TEST AREA',photo_path:donor+'/test.png',pickup_deadline:new Date(Date.now()+86400000).toISOString(),instructions:'TEST PRIVATE PICKUP',...extra};
+  const result=await asUser(donor,`select public.${extra.location_code?'publish_located_donation':'publish_donation'}($1::jsonb) id`,[JSON.stringify(payload)]);
   return result.rows[0].id;
 }
 before(async()=>{
@@ -36,6 +36,8 @@ before(async()=>{
     alter table storage.objects enable row level security;
     grant usage on schema storage to authenticated; grant select on storage.objects to authenticated;`);
   await db.exec(await fs.readFile(path.join(__dirname,'../supabase/migrations/202610310001_core.sql'),'utf8'));
+  await db.exec(await fs.readFile(path.join(__dirname,'../supabase/migrations/202611030001_locations_inquiries.sql'),'utf8'));
+  await db.exec(await fs.readFile(path.join(__dirname,'../supabase/migrations/202611030002_psgc_catalogue.sql'),'utf8'));
   for(const id of [donor,recipient,stranger,unverified])await db.query("insert into auth.users values($1,$2,$3,'{\"display_name\":\"TEST MEMBER\"}')",[id,id+'@example.invalid',id===unverified?null:new Date().toISOString()]);
   await db.query("insert into storage.objects(bucket_id,name) values('food-photos',$1)",[donor+'/test.png']);
 });
@@ -143,4 +145,55 @@ test('database survives closing and reopening the server engine',async()=>{
   await db.close();db=new PGlite(directory);
   assert.equal((await db.query('select count(*)::int n from public.donations')).rows[0].n,before);
   assert.equal((await asUser(recipient,'select * from public.reports')).rows.length,1);
+});
+
+test('official catalogue supports cities, municipalities and same-name places',async()=>{
+  assert.equal((await asUser(donor,"select count(*)::int n from public.locations")).rows[0].n,1642);
+  assert.equal((await asUser(donor,"select count(*)::int n from public.locations where kind='Municipality'")).rows[0].n,1493);
+  await assert.rejects(asUser(donor,"insert into public.locations values('0000000000','Forged','','','City')"),/permission denied/);
+});
+test('structured location validation preserves legacy fields and supports multiple community areas',async()=>{
+  await db.exec('delete from public.action_events');
+  const places=(await db.query('select code from public.locations order by code limit 2')).rows.map(r=>r.code);
+  await assert.rejects(asUser(donor,"select public.publish_located_donation('{\"location_code\":\"invalid\"}')"),/Choose a city/);
+  await assert.rejects(asUser(donor,"select public.publish_located_post('update','TEST ONLY','TEST ONLY body',array['invalid'])"),/Choose 1/);
+  const post=(await asUser(donor,"select public.publish_located_post('update','TEST ONLY','TEST ONLY body',$1::text[]) id",[places])).rows[0].id;
+  assert.equal((await asUser(recipient,'select id from public.community_posts where id=$1 and location_codes && $2::text[]',[post,[places[1]]])).rows.length,1);
+  const located=await publish({location_code:places[0],neighbourhood:'TEST NEIGHBOURHOOD'});
+  assert.equal((await asUser(recipient,'select id from public.donations where id=$1 and location_code=any($2::text[])',[located,places])).rows.length,1);
+  assert.match((await asUser(donor,'select area from public.donations where id=$1',[located])).rows[0].area,/TEST NEIGHBOURHOOD/);
+  const id=await publish();
+  assert.equal((await asUser(donor,'select area,location_code from public.donations where id=$1',[id])).rows[0].area,'TEST AREA');
+});
+test('pre-reservation inquiries are private, deduplicated and never reserve food or expose pickup details',async()=>{
+  await db.exec('delete from public.action_events');
+  const id=await publish();
+  await assert.rejects(asUser(unverified,"select public.send_inquiry($1,'TEST question')",[id]),/verified email/);
+  await assert.rejects(asUser(donor,"select public.send_inquiry($1,'TEST question')",[id]),/unavailable/);
+  await assert.rejects(asUser(recipient,"select public.send_inquiry($1,'  ')",[id]),/Enter a message/);
+  const t=(await asUser(recipient,"select public.send_inquiry($1,'TEST inquiry') id",[id])).rows[0].id;
+  assert.equal((await asUser(recipient,"select public.send_inquiry($1,'TEST second inquiry') id",[id])).rows[0].id,t);
+  assert.equal((await asUser(donor,'select * from public.inquiry_messages where inquiry_id=$1',[t])).rows.length,2);
+  assert.equal((await asUser(stranger,'select * from public.inquiries where id=$1',[t])).rows.length,0);
+  assert.equal((await asUser(stranger,'select * from public.inquiry_messages where inquiry_id=$1',[t])).rows.length,0);
+  await assert.rejects(asUser(stranger,"select public.send_inquiry($1,'TEST intrusion',$2)",[id,t]),/unavailable/);
+  await assert.rejects(asUser(recipient,"update public.inquiries set donor_id=$1 where id=$2",[stranger,t]),/permission denied/);
+  assert.equal((await asUser(recipient,'select * from public.pickup_details where donation_id=$1',[id])).rows.length,0);
+  assert.equal((await db.query('select status from public.donations where id=$1',[id])).rows[0].status,'available');
+  assert.equal((await db.query('select * from public.reservations where donation_id=$1',[id])).rows.length,0);
+  assert.equal((await asUser(donor,'select * from public.notifications where inquiry_id=$1 and read_at is null',[t])).rows.length,2);
+  await asUser(donor,'select public.read_inquiry($1)',[t]);
+  assert.equal((await asUser(donor,'select * from public.notifications where inquiry_id=$1 and read_at is null',[t])).rows.length,0);
+  await asUser(donor,'select public.set_block($1,true)',[recipient]);
+  await assert.rejects(asUser(recipient,"select public.send_inquiry($1,'TEST blocked',$2)",[id,t]),/unavailable/);
+  await asUser(donor,'select public.set_block($1,false)',[recipient]);
+  // Notification opt-out also applies to inquiry messages.
+  await asUser(recipient,"select public.save_profile('TEST MEMBER','individual','',false)");
+  await asUser(donor,"select public.send_inquiry($1,'TEST reply',$2)",[id,t]);
+  assert.equal((await asUser(recipient,'select * from public.notifications where inquiry_id=$1',[t])).rows.length,0);
+  await asUser(stranger,'select public.reserve_donation($1)',[id]);
+  await assert.rejects(asUser(recipient,"select public.send_inquiry($1,'TEST after reservation',$2)",[id,t]),/no longer accepting/);
+  await db.query("update public.inquiries set last_message_at=now()-interval '31 days' where id=$1",[t]);
+  await db.exec('select public.purge_retained_data()');
+  assert.equal((await db.query('select * from public.inquiry_messages where inquiry_id=$1',[t])).rows.length,0);
 });

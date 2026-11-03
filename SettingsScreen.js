@@ -36,7 +36,7 @@ export default function SettingsScreen({navigation}){
       {['light','dark','system'].map(mode=><Button key={mode} title={mode[0].toUpperCase()+mode.slice(1)+(preference===mode?' · Selected':'')} secondary={preference!==mode} accessibilityState={{selected:preference===mode}} onPress={()=>setAppearance(mode)}/>)}
       {!!storageError&&<AppText accessibilityRole="alert">{storageError}</AppText>}
     </Card>
-    <Card><AppText variant="heading">In-app updates</AppText><AppText variant="muted">Receive reservation and pickup updates inside NourishExtend. Device push notifications are outside this pilot.</AppText>
+    <Card><AppText variant="heading">In-app updates</AppText><AppText variant="muted">Receive inquiry, reservation and pickup updates inside NourishExtend. Device push notifications are outside this pilot.</AppText>
       <Switch accessibilityLabel="Receive in-app updates" value={profile.notifications_enabled} disabled={busy} onValueChange={notifications} trackColor={{false:colors.border,true:colors.primary}} thumbColor={colors.surface}/>
       <Button title="View notifications" secondary onPress={()=>navigation.navigate('Notifications')}/>
     </Card>
