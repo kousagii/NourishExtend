@@ -1,6 +1,6 @@
 {
   "name": "nourish-extend",
-  "version": "1.1.0",
+  "version": "1.2.1",
   "license": "0BSD",
   "main": "index.js",
   "scripts": {
@@ -17,11 +17,12 @@
     "preexport:android": "node scripts/check-config.cjs",
     "prebuild:apk": "node scripts/check-config.cjs",
     "preview": "node scripts/preview.cjs",
-    "test:server": "npx --yes --package=deno@2.5.6 deno test --allow-net=deno.land supabase/functions/_shared/process-image_test.ts",
+    "test:server": "npx --yes --package=deno@2.5.6 deno test --config supabase/functions/deno.json --allow-net=deno.land supabase/functions/_shared/",
     "android:setup": "node scripts/setup-android.cjs",
     "android:development": "expo run:android",
     "package": "python scripts/package.py",
-    "check:backend": "node scripts/check-backend.cjs"
+    "check:backend": "node scripts/check-backend.cjs",
+    "assets:brand": "node scripts/generate-brand.cjs"
   },
   "dependencies": {
     "@expo-google-fonts/libre-franklin": "0.4.2",

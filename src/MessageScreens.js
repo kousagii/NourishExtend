@@ -10,12 +10,20 @@ import {useRemote,dateLabel} from './data';
 import {RemoteState} from './DonationScreens';
 export function MessagesScreen({navigation}){
  const {session}=useSession();
- const state=useRemote(()=>query(supabase.from('inquiries').select('*,donor:profiles!inquiries_donor_id_fkey(display_name),inquirer:profiles!inquiries_inquirer_id_fkey(display_name)').order('last_message_at',{ascending:false}).limit(50)),[]);
+ const state=useRemote(async()=>{
+  const [inquiries,pickups]=await Promise.all([
+   query(supabase.from('inquiries').select('*,donor:profiles!inquiries_donor_id_fkey(display_name),inquirer:profiles!inquiries_inquirer_id_fkey(display_name)').order('last_message_at',{ascending:false}).limit(50)),
+   query(supabase.from('reservations').select('*,donations(id,title,donor_id)').order('created_at',{ascending:false}).limit(50)),
+  ]);return {inquiries,pickups};
+ },[]);
  useFocusEffect(React.useCallback(()=>{state.refresh();const timer=setInterval(state.refresh,15000);return()=>clearInterval(timer);},[state.refresh]));
  return <Page><View style={{flexDirection:'row',alignItems:'center',gap:12}}><Icon name="messages" size={32}/><AppText variant="title">Food conversations</AppText></View><AppText variant="muted">Ask a question before you reserve. A conversation doesn’t hold the food.</AppText><Button title="Your reserved pickups and pickup messages" secondary onPress={()=>navigation.navigate('Activity')}/><RemoteState loading={state.loading&&!state.data} error={state.error} retry={state.refresh}/>
- {!state.loading&&!state.error&&!state.data?.length&&<Card><AppText variant="heading">Start with a hello</AppText><AppText variant="muted">Open a donation and tap Message donor to ask about the food.</AppText><Button title="Browse donations" onPress={()=>navigation.navigate('Home')}/></Card>}
- {state.data?.map(t=>{const own=t.donor_id===session.user.id;const read=own?t.donor_read_at:t.inquirer_read_at;const unread=!read||new Date(read)<new Date(t.last_message_at);return <Card key={t.id}><AppText variant="muted">{unread?'● New message':'Read'} · {own?'Your donation':'Your inquiry'}</AppText><AppText variant="heading">{t.donation_title}</AppText><AppText>With {(own?t.inquirer:t.donor)?.display_name||'Member'}</AppText><AppText variant="muted">{dateLabel(t.last_message_at)}</AppText><Button secondary title="Open conversation" accessibilityLabel={'Open conversation about '+t.donation_title} onPress={()=>navigation.navigate('Inquiry',{id:t.id})}/></Card>;})}
- {state.data?.length===50&&<AppText variant="muted">Showing your 50 most recently active conversations.</AppText>}
+ {!state.loading&&!state.error&&!state.data?.inquiries.length&&!state.data?.pickups.length&&<Card><AppText variant="heading">Start with a hello</AppText><AppText variant="muted">Open a donation and tap Message donor to ask about the food.</AppText><Button title="Browse donations" onPress={()=>navigation.navigate('Home')}/></Card>}
+ {!!state.data?.pickups.length&&<AppText variant="heading">Pickup conversations</AppText>}
+ {state.data?.pickups.map(t=>{const own=t.donations?.donor_id===session.user.id,read=own?t.donor_read_at:t.recipient_read_at,unread=t.last_sender_id!==session.user.id&&!!t.last_message_at&&(!read||new Date(read)<new Date(t.last_message_at));return <Card key={t.id}><AppText variant="muted">{unread?'● New message':'Pickup'} · {t.status==='collected'?'Completed':t.status==='cancelled'?'Cancelled':'Reserved'}</AppText><AppText variant="heading">{t.donations?.title||'Food donation'}</AppText><Button secondary title="Open pickup conversation" onPress={()=>navigation.navigate('Pickup',{id:t.id})}/></Card>;})}
+ {!!state.data?.inquiries.length&&<AppText variant="heading">Inquiries before reservation</AppText>}
+ {state.data?.inquiries.map(t=>{const own=t.donor_id===session.user.id;const read=own?t.donor_read_at:t.inquirer_read_at;const unread=!read||new Date(read)<new Date(t.last_message_at);return <Card key={t.id}><AppText variant="muted">{unread?'● New message':'Read'} · {own?'Your donation':'Your inquiry'}</AppText><AppText variant="heading">{t.donation_title}</AppText><AppText>With {(own?t.inquirer:t.donor)?.display_name||'Member'}</AppText><AppText variant="muted">{dateLabel(t.last_message_at)}</AppText><Button secondary title="Open conversation" accessibilityLabel={'Open conversation about '+t.donation_title} onPress={()=>navigation.navigate('Inquiry',{id:t.id})}/></Card>;})}
+ {(state.data?.inquiries.length===50||state.data?.pickups.length===50)&&<AppText variant="muted">Showing up to 50 conversations per section.</AppText>}
  </Page>;
 }
 export function InquiryScreen({route,navigation}){

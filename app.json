@@ -2,7 +2,7 @@
   "expo": {
     "name": "NourishExtend",
     "slug": "nourish-extend",
-    "version": "1.1.0",
+    "version": "1.2.1",
     "orientation": "portrait",
     "icon": "./Images/icon.png",
     "userInterfaceStyle": "automatic",
@@ -36,7 +36,8 @@
           "backgroundColor": "#FAE6D0",
           "dark": {
             "backgroundColor": "#211B17"
-          }
+          },
+          "imageWidth": 160
         }
       ],
       "expo-status-bar"

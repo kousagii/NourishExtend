@@ -10,11 +10,11 @@ Deno.serve(async req => {
   // Require a fresh authenticated session for this destructive operation.
   const signedInAt = user.last_sign_in_at ? Date.parse(user.last_sign_in_at) : 0;
   if (!signedInAt || Date.now() - signedInAt > 600000) return new Response('{"error":"Sign out and sign in again before deleting your account."}', { status: 403, headers });
-  while (true) {
-    const { data, error: listError } = await admin.storage.from('food-photos').list(user.id, { limit: 100 });
+  for(const bucket of ['food-photos','profile-photos'])while (true) {
+    const { data, error: listError } = await admin.storage.from(bucket).list(user.id, { limit: 100 });
     if (listError) return new Response('{"error":"Could not remove your photos. Please retry."}', { status: 503, headers });
     if (!data?.length) break;
-    const { error: removeError } = await admin.storage.from('food-photos').remove(data.map(file => `${user.id}/${file.name}`));
+    const { error: removeError } = await admin.storage.from(bucket).remove(data.map(file => `${user.id}/${file.name}`));
     if (removeError) return new Response('{"error":"Could not remove your photos. Please retry."}', { status: 503, headers });
   }
   const { error: deleteError } = await admin.auth.admin.deleteUser(user.id);

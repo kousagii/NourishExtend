@@ -2,6 +2,7 @@ import 'react-native-url-polyfill/auto';
 import { AppState, Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { createClient, processLock } from '@supabase/supabase-js';
+import {signalUpdates} from './update-events';
 
 const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const key = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -25,6 +26,7 @@ export async function rpc(name, params) {
   if (!supabase) throw new Error('Connect the Supabase project before continuing.');
   const { data, error } = await supabase.rpc(name, params);
   if (error) throw error;
+  if(!['unread_counts','my_profile','community_post_activity'].includes(name))signalUpdates();
   return data;
 }
 export async function query(request) {

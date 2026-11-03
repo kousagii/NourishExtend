@@ -5,8 +5,10 @@ import {useTheme} from './src/theme';
 import {useSession} from './src/session';
 import {supabase,rpc,query} from './src/backend';
 import {useRemote} from './src/data';
+import Avatar from './src/Avatar';
+import {Select} from './src/controls';
 export default function SettingsScreen({navigation}){
-  const {preference,setAppearance,storageError,colors}=useTheme();
+  const {preference,setAppearance,storageError,colors,sizePercent,setSize}=useTheme();
   const {profile,session,refreshProfile}=useSession();
   const [busy,setBusy]=useState(false),[error,setError]=useState(''),[deleting,setDeleting]=useState(false),[password,setPassword]=useState('');
   const blocks=useRemote(()=>query(supabase.from('blocks').select('blocked_id')) ,[]);
@@ -31,10 +33,12 @@ export default function SettingsScreen({navigation}){
     }catch(err){setError(err.message||'Could not delete your account.');}finally{setPassword('');setBusy(false);}
   }
   return <Page><AppText variant="title">Make yourself at home</AppText>
-    <Card><AppText variant="heading">{profile.display_name||'Your profile'}</AppText><AppText variant="muted">{profile.account_type==='organisation'?profile.organisation_name+' · Unverified organisation':'Individual member'}</AppText><Button title="Edit profile" secondary onPress={()=>navigation.navigate('ProfileScreen')}/></Card>
+    <Card><Avatar path={profile.avatar_path} name={profile.display_name}/><AppText variant="heading">{profile.display_name||'Your profile'}</AppText>{!!profile.bio&&<AppText>{profile.bio}</AppText>}<AppText variant="muted">{profile.account_type==='organisation'?profile.organisation_name+' · Unverified organisation':'Individual member'}</AppText><Button title="Edit profile" secondary onPress={()=>navigation.navigate('ProfileScreen')}/></Card>
     <Card><AppText variant="heading">Appearance</AppText><AppText variant="muted">System follows your device. Your choice is saved on this device.</AppText>
       {['light','dark','system'].map(mode=><Button key={mode} title={mode[0].toUpperCase()+mode.slice(1)+(preference===mode?' · Selected':'')} secondary={preference!==mode} accessibilityState={{selected:preference===mode}} onPress={()=>setAppearance(mode)}/>)}
       {!!storageError&&<AppText accessibilityRole="alert">{storageError}</AppText>}
+      <Select label="Text and control size" value={String(sizePercent)} onChange={value=>setSize(Number(value))} options={[120,110,100,90,80].map(p=>({value:String(p),label:p+'%'+(p===100?' · Default':'')}))}/>
+      <AppText variant="muted">100% is the new compact default. Buttons keep a usable touch target. Your device’s accessibility text size still applies.</AppText>
     </Card>
     <Card><AppText variant="heading">In-app updates</AppText><AppText variant="muted">Receive inquiry, reservation and pickup updates inside NourishExtend. Device push notifications are outside this pilot.</AppText>
       <Switch accessibilityLabel="Receive in-app updates" value={profile.notifications_enabled} disabled={busy} onValueChange={notifications} trackColor={{false:colors.border,true:colors.primary}} thumbColor={colors.surface}/>
@@ -46,7 +50,7 @@ export default function SettingsScreen({navigation}){
       {!blocks.loading&&!blocks.error&&!blocks.data?.length&&<AppText variant="muted">You have not blocked anyone.</AppText>}
       {blocks.data?.map((block,index)=><Button key={block.blocked_id} title={'Unblock member '+(index+1)} secondary disabled={busy} onPress={async()=>{setBusy(true);setError('');try{await rpc('set_block',{p_user:block.blocked_id,p_blocked:false});await blocks.refresh();}catch{setError('Could not unblock this member.');}finally{setBusy(false);}}}/>)}
     </Card>
-    <Card><Button title="Privacy and data use" secondary onPress={()=>navigation.navigate('Privacy')}/><Button title="Sign out on all devices" secondary busy={busy&&!deleting} onPress={signout}/></Card>
+    <Card><Button title="Change password" secondary onPress={()=>navigation.navigate('ChangePassword')}/><Button title="Privacy and data use" secondary onPress={()=>navigation.navigate('Privacy')}/><Button title="Sign out on all devices" secondary busy={busy&&!deleting} onPress={signout}/></Card>
     <Card><AppText variant="heading">Delete your account</AppText><AppText variant="muted">Permanently remove your profile, donations, community posts, messages and photos. Associated exchange records will also be removed. This cannot be undone.</AppText>
       {!deleting?<Button title="Delete account…" secondary disabled={busy} onPress={()=>setDeleting(true)}/>:<>
         <Field label="Current password to confirm deletion" value={password} onChangeText={setPassword} secureTextEntry autoComplete="current-password"/>

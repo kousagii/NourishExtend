@@ -52,10 +52,11 @@ export function PickupScreen({route,navigation}) {
     const claim=await query(supabase.from('reservations').select('*,donations(*)').eq('id',route.params.id).maybeSingle());
     if(!claim)return null;
     const [messages,details]=await Promise.all([
-      query(supabase.from('messages').select('*').eq('reservation_id',claim.id).order('created_at').limit(200)),
+      query(supabase.from('messages').select('*').eq('reservation_id',claim.id).order('created_at',{ascending:false}).order('id',{ascending:false}).limit(100)),
       query(supabase.from('pickup_details').select('instructions').eq('donation_id',claim.donation_id).maybeSingle()),
     ]);
-    return {claim,messages,details};
+    if(messages[0])await rpc('read_pickup',{p_reservation:claim.id,p_through:messages[0].created_at});
+    return {claim,messages:messages.reverse(),details};
   },[route.params.id]);
   useFocusEffect(React.useCallback(()=>{
     state.refresh();
@@ -96,7 +97,7 @@ export function PickupScreen({route,navigation}) {
       <AppText variant="heading">Pickup messages</AppText>
       {!state.data.messages.length && <AppText variant="muted">No messages yet. Use this private conversation to coordinate pickup.</AppText>}
       {state.data.messages.map(item=><Card key={item.id}><AppText variant="muted">{item.sender_id===session.user.id?'You':'Other person'} · {dateLabel(item.created_at)}</AppText><AppText>{item.body}</AppText></Card>)}
-      {state.data.messages.length===200 && <AppText variant="muted">Showing the first 200 messages.</AppText>}
+      {state.data.messages.length===100 && <AppText variant="muted">Showing the latest 100 messages.</AppText>}
       {claim.status==='reserved' && <Card>
         <Field label="Message" value={message} onChangeText={setMessage} multiline maxLength={1500}/>
         <Button title="Send message" busy={busy} disabled={!message.trim()} onPress={()=>act('send_message',{p_reservation:claim.id,p_body:message})}/>

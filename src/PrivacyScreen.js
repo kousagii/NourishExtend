@@ -13,9 +13,11 @@ export default function PrivacyScreen({ onBack }) {
     </Card>
     <Card>
       <AppText variant="heading">What we collect and share</AppText>
-      <AppText>Your email is used for sign-in and account recovery. Other signed-in members can see your display name, organisation name if supplied, donation photos, approximate pickup area, and community posts. Organisation accounts are labelled unverified.</AppText>
+      <AppText>Your email is used for sign-in and account recovery. Other signed-in members can see your display name, profile photo, short bio, organisation name if supplied, donation photos, approximate pickup area, community posts and comments. Organisation accounts are labelled unverified.</AppText>
+      <AppText>When you like a community post, we store your account ID, the post ID and the time so you can undo it. Other members see aggregate like counts, not a list of who liked a post. Likes are removed when you unlike, delete your account, or the post is deleted. Counts exclude members you have blocked or who blocked you.</AppText>
       <AppText>Exact pickup instructions are private to the donor and current recipient. Pre-reservation inquiries are private to the donor and the person asking; an inquiry does not reserve food or reveal private pickup instructions. Do not put your address or contact details in public titles, descriptions, photos, community posts, or pre-reservation inquiries.</AppText>
       <AppText>Photos are processed to remove embedded metadata. Supabase processes accounts, records and images; Cloudflare serves the website. Your project region determines primary database location; provider processing can involve other countries.</AppText>
+      <AppText>Photos use temporary links. Someone who already has a copied link may view it until it expires (up to 10 minutes). Removing a profile photo hides it from your profile; unlinked photo files are removed by maintenance after a one-day grace period when cleanup is active.</AppText>
     </Card>
     <Card>
       <AppText variant="heading">Retention and control</AppText>

@@ -51,8 +51,8 @@ export function HomeScreen({ navigation }) {
       <View style={{flexDirection:'row',flexWrap:'wrap',gap:10}}><Button title="Share food" onPress={()=>navigation.navigate('Donate')}/><Button title="Find food below" secondary onPress={()=>setShowFilters(true)}/></View>
     </Card>
     <Card>
-      <Field label="Search food" value={search} onChangeText={setSearch} maxLength={80} placeholder="What are you looking for?" />
-      <Button title={showFilters?'Hide filters':'Filter by area or food type'} secondary onPress={()=>setShowFilters(!showFilters)} />
+      <Field icon={<Icon name="search"/>} label="Search food" value={search} onChangeText={setSearch} maxLength={80} placeholder="What are you looking for?" />
+      <Button icon={<Icon name="filter"/>} title={showFilters?'Hide filters':'Filter by area or food type'} secondary onPress={()=>setShowFilters(!showFilters)} />
       {showFilters && <>
       <LocationSelect label="Where would you like to collect?" value={areas} onChange={setAreas} multiple/>
       <Select label="Food category" value={category} onChange={setCategory} options={[{value:'',label:'All food'},...categories.map(value=>({value,label:value}))]}/>
@@ -118,7 +118,7 @@ export function CreateDonationScreen({ navigation }) {
     <Card>
       <AppText variant="heading">1. What are you sharing?</AppText>
       {photo ? <Image accessibilityLabel="Selected food photo" source={{uri:photo.uri}} style={{width:'100%',aspectRatio:1.6,borderRadius:12}} />:<View style={{padding:24,alignItems:'center',gap:8,backgroundColor:colors.background,borderRadius:16}}><Icon name="photo" size={36}/><AppText variant="muted">Let neighbours see the food you’re sharing.</AppText></View>}
-      <Button title={photo?'Change food photo':'Choose food photo'} secondary disabled={busy} onPress={choosePhoto} />
+      <Button icon={<Icon name="photo"/>} title={photo?'Change food photo':'Choose food photo'} secondary disabled={busy} onPress={choosePhoto} />
       <Field label="Food name" value={form.title} onChangeText={update('title')} maxLength={100} />
       <Field label="Quantity" value={form.quantity} onChangeText={update('quantity')} placeholder="For example: 3 sealed packs" maxLength={80} />
       <Select label="Food category" value={form.category} onChange={update('category')} options={categories.map(value=>({value,label:value}))}/>
@@ -165,6 +165,7 @@ export function DonationDetailScreen({route,navigation}) {
       <AppText variant="muted">{item.area} · Collect by {dateLabel(item.pickup_deadline)}</AppText>
       <AppText variant="heading">{available?'Available':item.status==='available'?'Expired':item.status==='collected'?'Completed':item.status[0].toUpperCase()+item.status.slice(1)}</AppText>
       {!!item.description && <AppText>{item.description}</AppText>}
+      {item.donor_id!==session.user.id&&<Button title="View donor profile" secondary onPress={()=>navigation.navigate('Member',{id:item.donor_id})}/>}
       <AppText variant="heading">Allergens / ingredients</AppText><AppText>{item.allergens}</AppText>
       <AppText variant="heading">Storage</AppText><AppText>{item.storage_info}</AppText>
       {!!actionError && <AppText accessibilityRole="alert" style={{color:colors.danger}}>{actionError}</AppText>}

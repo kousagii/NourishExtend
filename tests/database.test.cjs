@@ -38,6 +38,10 @@ before(async()=>{
   await db.exec(await fs.readFile(path.join(__dirname,'../supabase/migrations/202610310001_core.sql'),'utf8'));
   await db.exec(await fs.readFile(path.join(__dirname,'../supabase/migrations/202611030001_locations_inquiries.sql'),'utf8'));
   await db.exec(await fs.readFile(path.join(__dirname,'../supabase/migrations/202611030002_psgc_catalogue.sql'),'utf8'));
+  await db.exec(await fs.readFile(path.join(__dirname,'../supabase/migrations/202611030003_notifications_comments.sql'),'utf8'));
+  await db.exec(await fs.readFile(path.join(__dirname,'../supabase/migrations/202611030004_profile_photos.sql'),'utf8'));
+  await db.exec(await fs.readFile(path.join(__dirname,'../supabase/migrations/202611040001_notification_history.sql'),'utf8'));
+  await db.exec(await fs.readFile(path.join(__dirname,'../supabase/migrations/202611040002_community_likes.sql'),'utf8'));
   for(const id of [donor,recipient,stranger,unverified])await db.query("insert into auth.users values($1,$2,$3,'{\"display_name\":\"TEST MEMBER\"}')",[id,id+'@example.invalid',id===unverified?null:new Date().toISOString()]);
   await db.query("insert into storage.objects(bucket_id,name) values('food-photos',$1)",[donor+'/test.png']);
 });
@@ -196,4 +200,113 @@ test('pre-reservation inquiries are private, deduplicated and never reserve food
   await db.query("update public.inquiries set last_message_at=now()-interval '31 days' where id=$1",[t]);
   await db.exec('select public.purge_retained_data()');
   assert.equal((await db.query('select * from public.inquiry_messages where inquiry_id=$1',[t])).rows.length,0);
+});
+
+
+test('reservation alerts identify food and pickup; both kinds of messages produce unread counts',async()=>{
+  await db.exec('delete from public.action_events');
+  const id=await publish();const claim=(await asUser(recipient,'select public.reserve_donation($1) id',[id])).rows[0].id;
+  const notes=(await asUser(donor,'select * from public.notifications where donation_id=$1',[id])).rows;
+  assert.equal(notes[0].reservation_id,claim);assert.equal(notes[0].kind,'reservation');assert.match(notes[0].body,/TEST ONLY/);
+  const before=(await asUser(donor,'select public.unread_counts() counts')).rows[0].counts.messages;
+  await asUser(recipient,"select public.send_message($1,'SYNTHETIC pickup question')",[claim]);
+  assert.equal((await asUser(donor,'select public.unread_counts() counts')).rows[0].counts.messages,before+1);
+  const stamp=(await db.query('select max(created_at) stamp from public.messages where reservation_id=$1',[claim])).rows[0].stamp;
+  await asUser(stranger,'select public.read_pickup($1,$2)',[claim,stamp]);
+  assert.equal((await db.query('select donor_read_at from public.reservations where id=$1',[claim])).rows[0].donor_read_at,null);
+  await asUser(donor,'select public.read_pickup($1,$2)',[claim,stamp]);
+  assert.equal((await asUser(donor,"select * from public.notifications where reservation_id=$1 and kind='pickup_message' and read_at is null",[claim])).rows.length,0);
+  await asUser(donor,'select public.confirm_collection($1)',[claim]);
+  const confirm=(await asUser(recipient,"select * from public.notifications where reservation_id=$1 and kind='confirm_collection'",[claim])).rows;
+  // Recipient opted out earlier: unread messages still work without alert records.
+  assert.equal(confirm.length,0);
+  await asUser(recipient,"select public.save_profile('TEST MEMBER','individual','',true)");
+  await asUser(recipient,'select public.confirm_collection($1)',[claim]);
+  assert.equal((await asUser(donor,"select reservation_id from public.notifications where donation_id=$1 and kind='completed'",[id])).rows[0].reservation_id,claim);
+});
+
+test('comments have real authors, author-only removal, blocked visibility, reports and direct notification links',async()=>{
+  await db.exec('delete from public.action_events');
+  const post=(await asUser(donor,"select public.publish_post('update','SYNTHETIC POST','SYNTHETIC BODY','SYNTHETIC AREA') id")).rows[0].id;
+  await assert.rejects(asUser(unverified,"select public.add_comment($1,'TEST')",[post]),/verified email/);
+  const comment=(await asUser(recipient,"select public.add_comment($1,'SYNTHETIC COMMENT') id",[post])).rows[0].id;
+  assert.equal((await asUser(stranger,'select author_id from public.community_comments where id=$1',[comment])).rows[0].author_id,recipient);
+  const alert=(await asUser(donor,"select * from public.notifications where post_id=$1",[post])).rows[0];
+  assert.equal(alert.kind,'community_comment');assert.match(alert.body,/SYNTHETIC POST/);
+  await asUser(stranger,'select public.mark_notification_read($1)',[alert.id]);
+  assert.equal((await asUser(donor,'select read_at from public.notifications where id=$1',[alert.id])).rows[0].read_at,null);
+  await assert.rejects(asUser(stranger,'select public.hide_my_comment($1)',[comment]),/only remove your own/);
+  await asUser(stranger,"select public.report_content('comment',$1,'SYNTHETIC REPORT')",[comment]);
+  await asUser(donor,'select public.set_block($1,true)',[recipient]);
+  assert.equal((await asUser(donor,'select * from public.community_comments where id=$1',[comment])).rows.length,0);
+  await assert.rejects(asUser(recipient,"select public.add_comment($1,'BLOCKED COMMENT')",[post]),/unavailable/);
+  await asUser(donor,'select public.set_block($1,false)',[recipient]);
+  await asUser(recipient,'select public.hide_my_comment($1)',[comment]);
+  assert.equal((await asUser(stranger,'select * from public.community_comments where id=$1',[comment])).rows.length,0);
+});
+
+test('profile photos must belong to the owner and never grant organisation verification',async()=>{
+  await db.exec('delete from public.action_events');
+  const path=donor+'/SYNTHETIC-avatar.png';await db.query("insert into storage.objects(bucket_id,name) values('profile-photos',$1)",[path]);
+  await asUser(donor,"select public.save_profile_details('SYNTHETIC DONOR','individual','','SYNTHETIC BIO',$1)",[path]);
+  assert.equal((await asUser(stranger,'select bio,avatar_path from public.profiles where id=$1',[donor])).rows[0].bio,'SYNTHETIC BIO');
+  assert.equal((await asUser(stranger,"select * from storage.objects where bucket_id='profile-photos' and name=$1",[path])).rows.length,1);
+  await assert.rejects(asUser(recipient,"select public.save_profile_details('TEST MEMBER','individual','','',$1)",[path]),/own uploaded/);
+  await asUser(donor,'select public.set_block($1,true)',[recipient]);
+  assert.equal((await asUser(recipient,"select * from storage.objects where bucket_id='profile-photos' and name=$1",[path])).rows.length,0);
+  await asUser(donor,'select public.set_block($1,false)',[recipient]);
+  assert.equal((await asUser(donor,'select verified from public.profiles where id=$1',[donor])).rows[0].verified,false);
+});
+
+
+test('post likes are authenticated, idempotent, reversible and cannot be assigned to another member',async()=>{
+  await db.exec('delete from public.action_events');
+  const post=(await asUser(donor,"select public.publish_post('update','LIKE TEST','SYNTHETIC BODY','TEST AREA') id")).rows[0].id;
+  await assert.rejects(asUser(unverified,'select public.set_post_like($1,true)',[post]),/verified email/);
+  await assert.rejects(db.transaction(async tx=>{await tx.exec('set local role anon');return tx.query('select public.set_post_like($1,true)',[post]);}),/permission denied/);
+  await assert.rejects(asUser(recipient,'insert into public.community_likes(post_id,user_id) values($1,$2)',[post,donor]),/permission denied/);
+  await Promise.all([1,2].map(()=>asUser(recipient,'select public.set_post_like($1,true)',[post])));
+  assert.equal((await db.query('select count(*)::int n from public.community_likes where post_id=$1',[post])).rows[0].n,1);
+  const activity=(await asUser(recipient,'select * from public.community_post_activity($1)',[[post]])).rows[0];
+  assert.equal(Number(activity.like_count),1);assert.equal(activity.liked,true);assert.equal(Number(activity.comment_count),0);
+  assert.equal((await asUser(stranger,'select * from public.community_likes where post_id=$1',[post])).rows.length,0);
+  assert.equal((await asUser(recipient,'select * from public.community_likes where post_id=$1',[post])).rows.length,1);
+  await asUser(recipient,'select public.set_post_like($1,false)',[post]);
+  await asUser(recipient,'select public.set_post_like($1,false)',[post]);
+  assert.equal(Number((await asUser(donor,'select * from public.community_post_activity($1)',[[post]])).rows[0].like_count),0);
+});
+
+test('post activity respects hidden posts, member blocking and visible comment counts',async()=>{
+  await db.exec('delete from public.action_events');
+  const post=(await asUser(donor,"select public.publish_post('request','ACTIVITY TEST','SYNTHETIC BODY','TEST AREA') id")).rows[0].id;
+  await asUser(recipient,'select public.set_post_like($1,true)',[post]);
+  const comment=(await asUser(recipient,"select public.add_comment($1,'SYNTHETIC COMMENT') id",[post])).rows[0].id;
+  assert.equal(Number((await asUser(stranger,'select * from public.community_post_activity($1)',[[post]])).rows[0].comment_count),1);
+  await asUser(stranger,'select public.set_block($1,true)',[recipient]);
+  const filtered=(await asUser(stranger,'select * from public.community_post_activity($1)',[[post]])).rows[0];
+  assert.equal(Number(filtered.comment_count),0);assert.equal(Number(filtered.like_count),0);
+  await asUser(stranger,'select public.set_block($1,false)',[recipient]);
+  await asUser(recipient,'select public.hide_my_comment($1)',[comment]);
+  assert.equal(Number((await asUser(stranger,'select * from public.community_post_activity($1)',[[post]])).rows[0].comment_count),0);
+  await asUser(donor,'select public.set_block($1,true)',[recipient]);
+  await assert.rejects(asUser(recipient,'select public.set_post_like($1,true)',[post]),/unavailable/);
+  assert.equal((await asUser(recipient,'select * from public.community_post_activity($1)',[[post]])).rows.length,0);
+  assert.equal((await asUser(recipient,'select * from public.community_likes where post_id=$1',[post])).rows.length,0);
+  await asUser(donor,'select public.set_block($1,false)',[recipient]);
+  await db.query('update public.community_posts set hidden=true where id=$1',[post]);
+  assert.equal((await asUser(donor,'select * from public.community_post_activity($1)',[[post]])).rows.length,0);
+  await assert.rejects(asUser(recipient,'select public.set_post_like($1,true)',[post]),/unavailable/);
+});
+
+test('post activity rejects anonymous and oversized reads; likes obey mutation limits and cascade with posts',async()=>{
+  await db.exec('delete from public.action_events');
+  const post=(await asUser(donor,"select public.publish_post('update','CASCADE TEST','SYNTHETIC BODY','TEST AREA') id")).rows[0].id;
+  await assert.rejects(db.transaction(async tx=>{await tx.exec('set local role anon');return tx.query('select * from public.community_post_activity($1)',[[post]]);}),/permission denied/);
+  await assert.rejects(asUser(recipient,'select * from public.community_post_activity($1)',[Array(21).fill(post)]),/up to 20/);
+  await assert.rejects(asUser(recipient,'select public.set_post_like($1,null)',[post]),/like or unlike/);
+  await asUser(recipient,'select public.set_post_like($1,true)',[post]);
+  await db.query('insert into public.action_events(user_id) select $1 from generate_series(1,20)',[recipient]);
+  await assert.rejects(asUser(recipient,'select public.set_post_like($1,false)',[post]),/Too many requests/);
+  await db.query('delete from public.community_posts where id=$1',[post]);
+  assert.equal((await db.query('select * from public.community_likes where post_id=$1',[post])).rows.length,0);
 });

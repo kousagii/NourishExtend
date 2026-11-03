@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { configured, supabase, rpc } from './backend';
 const SessionContext = createContext(null);
 export function SessionProvider({ children }) {
@@ -6,7 +7,8 @@ export function SessionProvider({ children }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(configured);
   const [error, setError] = useState('');
-  const [recovery, setRecovery] = useState(false);
+  const [recovery, updateRecovery] = useState(false);
+  function setRecovery(next){updateRecovery(next);(next?AsyncStorage.setItem('nourish.recovery.v1','1'):AsyncStorage.removeItem('nourish.recovery.v1')).catch(()=>setError('Could not save password-reset progress. Keep the app open until you finish.'));}
   const currentUser = useRef(null);
   async function refreshProfile() {
     const requestedUser = currentUser.current;
@@ -30,12 +32,15 @@ export function SessionProvider({ children }) {
       catch { if (active && requestedVersion === version) setError('Your profile could not be loaded. Check your connection and database setup.'); }
       finally { if (active && requestedVersion === version) setLoading(false); }
     }
-    supabase.auth.getSession().then(({ data, error }) => {
+    Promise.all([supabase.auth.getSession(),AsyncStorage.getItem('nourish.recovery.v1').catch(()=>null)]).then(([{ data, error },pending]) => {
+      if(active&&data?.session&&pending==='1')updateRecovery(true);
+      if(active&&!data?.session)AsyncStorage.removeItem('nourish.recovery.v1').catch(()=>{});
       if (error) { if (active) { setError('Your session could not be restored. Please sign in again.'); setLoading(false); } }
       else apply(data.session);
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, next) => {
       if (event === 'PASSWORD_RECOVERY') setRecovery(true);
+      if(event==='SIGNED_OUT')setRecovery(false);
       // Avoid awaiting Supabase calls inside the auth callback's lock.
       setTimeout(() => apply(next), 0);
     });

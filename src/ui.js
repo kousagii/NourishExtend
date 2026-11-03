@@ -2,36 +2,40 @@ import React from 'react';
 import { View, Text, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Platform, StyleSheet, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { fontStyle, useTheme } from './theme';
+import {textSize} from './sizing.cjs';
 
 export function AppText({ variant, style, ...props }) {
-  const { colors } = useTheme();
-  return <Text {...props} style={[fontStyle, styles.text, { color: colors.text }, variant === 'title' && styles.title, variant === 'heading' && styles.heading, variant === 'muted' && { color: colors.muted }, style]} />;
+  const { colors,sizePercent=100,uiScale=0.8 } = useTheme();
+  const combined=StyleSheet.flatten([fontStyle,styles.text,{color:colors.text},variant==='title'&&styles.title,variant==='heading'&&styles.heading,variant==='muted'&&{color:colors.muted},style]);
+  return <Text {...props} style={[combined,{fontSize:textSize(combined.fontSize||16,sizePercent),lineHeight:Math.max(18,(combined.lineHeight||25)*uiScale)}]} />;
 }
 export function Page({ children }) {
-  const { colors } = useTheme();
+  const { colors,uiScale=0.8 } = useTheme();
   const insets = useSafeAreaInsets();
   return <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.background }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.page, { paddingTop: Math.max(insets.top,20), paddingBottom: Math.max(insets.bottom, 24) }]}>
-      <View style={styles.content}>{children}</View>
+    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.page, {padding:20*uiScale, paddingTop: Math.max(insets.top,20*uiScale), paddingBottom: Math.max(insets.bottom, 24*uiScale) }]}>
+      <View style={[styles.content,{gap:18*uiScale}]}>{children}</View>
     </ScrollView>
   </KeyboardAvoidingView>;
 }
 export function Card({ children,style }) {
-  const { colors } = useTheme();
-  return <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border },style]}>{children}</View>;
+  const { colors,uiScale=0.8 } = useTheme();
+  return <View style={[styles.card, {padding:18*uiScale,gap:14*uiScale,borderRadius:22*uiScale, backgroundColor: colors.surface, borderColor: colors.border },style]}>{children}</View>;
 }
-export function Button({ title, onPress, secondary, disabled, busy, accessibilityState, ...props }) {
-  const { colors } = useTheme();
-  return <Pressable {...props} accessibilityRole="button" aria-selected={accessibilityState?.selected} aria-expanded={accessibilityState?.expanded} aria-busy={busy} accessibilityState={{ ...accessibilityState, disabled: disabled || busy, busy }} disabled={disabled || busy} onPress={onPress} style={({ pressed }) => [styles.button, { backgroundColor: secondary ? colors.surface : colors.primary, borderColor: colors.primary, opacity: disabled || busy ? 0.55 : pressed ? 0.8 : 1 }]}>
+export function Button({ title, icon, onPress, secondary, disabled, busy, accessibilityState, ...props }) {
+  const { colors,uiScale=0.8 } = useTheme();
+  return <Pressable {...props} accessibilityRole="button" aria-selected={accessibilityState?.selected} aria-expanded={accessibilityState?.expanded} aria-busy={busy} accessibilityState={{ ...accessibilityState, disabled: disabled || busy, busy }} disabled={disabled || busy} onPress={onPress} style={({ pressed }) => [styles.button, {minHeight:Math.max(44,48*uiScale),paddingHorizontal:18*uiScale,paddingVertical:12*uiScale,borderRadius:12*uiScale, backgroundColor: secondary ? colors.surface : colors.primary, borderColor: colors.primary, opacity: disabled || busy ? 0.55 : pressed ? 0.8 : 1 }]}>
     {busy && <ActivityIndicator color={secondary ? colors.primary : colors.onPrimary} />}
+    {!busy && icon}
     <AppText style={{ color: secondary ? colors.primary : colors.onPrimary, textAlign: 'center', fontWeight: '600', flexShrink: 1 }}>{title}</AppText>
   </Pressable>;
 }
-export function Field({ label, error, style, ...props }) {
-  const { colors } = useTheme();
+export function Field({ label, icon, inputRef, error, style, ...props }) {
+  const { colors,uiScale=0.8,sizePercent=100 } = useTheme();
   return <View style={{ gap: 6 }}>
     <AppText>{label}</AppText>
-    <TextInput {...props} accessibilityLabel={label} placeholderTextColor={colors.muted} style={[fontStyle, styles.input, { backgroundColor: colors.input, borderColor: error ? colors.danger : colors.border, color: colors.text }, style]} />
+    <View><TextInput ref={inputRef} {...props} accessibilityLabel={label} placeholderTextColor={colors.muted} style={[fontStyle, styles.input, {minHeight:Math.max(44,50*uiScale),padding:12*uiScale,fontSize:textSize(16,sizePercent),lineHeight:Math.max(18,24*uiScale), backgroundColor: colors.input, borderColor: error ? colors.danger : colors.border, color: colors.text }, icon&&{paddingLeft:Math.max(40,46*uiScale)},style]} />
+    {!!icon&&<View pointerEvents="none" style={{position:'absolute',left:12,top:0,bottom:0,justifyContent:'center'}}>{icon}</View>}</View>
     {!!error && <AppText accessibilityRole="alert" style={{ color: colors.danger }}>{error}</AppText>}
   </View>;
 }
