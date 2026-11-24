@@ -1,6 +1,14 @@
-# Dependencies, generated output, test data and local tools
+# Installed dependencies and regenerable caches
 node_modules/
 .expo/
+.cache/
+.npm/
+*.tsbuildinfo
+.eslintcache
+.stylelintcache
+.metro-health-check*
+
+# Build exports, test output and local-only tooling
 /dist/
 /exports/
 /test-results/
@@ -10,10 +18,13 @@ node_modules/
 /.local/
 /.review/
 
-# Private environment/signing files; retain the safe configuration template
+# Private configuration; keep the secret-free setup template for fresh checkouts
 .env
 .env.*
-!.env.example
+.envrc
+!/.env.example
+
+# Signing keys and local credentials
 *.jks
 *.keystore
 *.p12
@@ -22,26 +33,26 @@ node_modules/
 credentials.json
 demo-signing.properties
 
-# Machine-specific Android configuration and generated native builds
-android/local.properties
-android/.gradle/
-android/.kotlin/
-android/**/build/
-android/**/.cxx/
-android/**/.externalNativeBuild/
+# Android source, Gradle wrapper and resources stay in Git for local APK builds
+/android/local.properties
+/android/.gradle/
+/android/.kotlin/
+/android/**/build/
+/android/**/.cxx/
+/android/**/.externalNativeBuild/
+*.iml
+*.hprof
 *.apk
 *.aab
 *.apks
 
-# Supabase CLI local state
-supabase/.temp/
-supabase/.branches/
+# Generated Supabase CLI state; retain migrations, functions and email templates
+/supabase/.temp/
+/supabase/.branches/
 
-# Keep only the root README from Markdown documentation
+# Local project notes; only the brief root README is published
 *.md
 !/README.md
-
-# Local notes, research, screenshots, reports and archived HTML prototypes
 /docs/
 /legacy/
 
@@ -54,7 +65,7 @@ supabase/.branches/
 /Images/notification.png
 /Images/truck.png
 
-# Local editor/OS files, logs and temporary files
+# Editor/OS files, logs and temporary files
 .vscode/
 .idea/
 .DS_Store

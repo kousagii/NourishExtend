@@ -1,0 +1,60 @@
+{
+  "app": "Nourish Extend",
+  "scope": "Actual current web UI at 390x844. Synthetic adapter screenshots are illustrations, not production transactions or native Android proof.",
+  "screenshots": [
+    {
+      "file": "home-demo.jpg",
+      "mode": "synthetic",
+      "description": "Actual Home with synthetic food illustration and listings",
+      "appVersion": "1.2.3",
+      "viewport": "390 x 844 web",
+      "checked": "2026-11-04",
+      "sha256": "bb6d8067197a0c33063ee78a989f6c5cabbab7066b1e0502d4490f24e25a46f1"
+    },
+    {
+      "file": "share-food-demo.jpg",
+      "mode": "synthetic",
+      "description": "Actual blank food form; no upload or publication",
+      "appVersion": "1.2.3",
+      "viewport": "390 x 844 web",
+      "checked": "2026-11-04",
+      "sha256": "d155cd9fad21dce1f2b6f6b4147f4340d01c5eb8535d0b6fdba8183c9f8415ab"
+    },
+    {
+      "file": "location-search-demo.jpg",
+      "mode": "synthetic",
+      "description": "Real Philippine location picker; demo session; no backend filter test",
+      "appVersion": "1.2.3",
+      "viewport": "390 x 844 web",
+      "checked": "2026-11-04",
+      "sha256": "a8238d07faaaba4777fc3d478846685511721246c354cefc3416ca5418be5884"
+    },
+    {
+      "file": "messages-demo.jpg",
+      "mode": "synthetic",
+      "description": "Actual inquiry chat bubbles with fictional messages; no messages sent",
+      "appVersion": "1.2.3",
+      "viewport": "390 x 844 web",
+      "checked": "2026-11-04",
+      "sha256": "7a57b3a50361707293dcb38c941476e4a16418c4c7e497538ff20f8155f049b6"
+    },
+    {
+      "file": "community-demo.jpg",
+      "mode": "synthetic",
+      "description": "Actual community feed; fictional update and interaction totals",
+      "appVersion": "1.2.3",
+      "viewport": "390 x 844 web",
+      "checked": "2026-11-04",
+      "sha256": "b039b5e76b11c1bbd41a01115535bf6040f7bbe260d722e2a48e2ce43cce19b7"
+    },
+    {
+      "file": "settings-demo.jpg",
+      "mode": "synthetic",
+      "description": "Actual Settings controls in Light mode at 100%; synthetic session",
+      "appVersion": "1.2.3",
+      "viewport": "390 x 844 web",
+      "checked": "2026-11-04",
+      "sha256": "e159d643973fa970a957ea032ef30ce50702e42e78bdf5195a90bd5955dc42b7"
+    }
+  ]
+}

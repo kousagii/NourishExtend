@@ -11,6 +11,18 @@ Built with **Expo, React Native, React Native Web, and Supabase** for **web and 
 - Community requests and updates, likes, comments, reporting, and blocking.
 - Profiles, email/password authentication, in-app notifications, themes, and text sizing.
 
+## Screenshots
+
+| Home | Share food | City and municipality search |
+| --- | --- | --- |
+| <img src="Images/readme/home-demo.jpg" alt="Home with food search and donation navigation" width="220"> | <img src="Images/readme/share-food-demo.jpg" alt="Food donation form with photo, quantity and category fields" width="220"> | <img src="Images/readme/location-search-demo.jpg" alt="Searchable city and municipality selector" width="220"> |
+
+| Private messages | Community | Appearance and sizing |
+| --- | --- | --- |
+| <img src="Images/readme/messages-demo.jpg" alt="Private inquiry conversation with message bubbles" width="220"> | <img src="Images/readme/community-demo.jpg" alt="Community post with Like, Comment and options controls" width="220"> | <img src="Images/readme/settings-demo.jpg" alt="Settings for Light, Dark, System and text size" width="220"> |
+
+Actual web UI captures from version 1.2.3 (4 November 2026), using **synthetic demo data; no live backend actions**. Android system controls may differ.
+
 ## Run locally
 
 Requirements: **Node.js 24+**, npm, and a configured Supabase project. Internet is required for shared data.
